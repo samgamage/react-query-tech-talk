@@ -1,55 +1,56 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/router";
 import { Post, PostFormData } from "@/utils/types";
-import { createPost, getAllPosts, deletePost } from "@/utils/api";
+import { createPost, deletePost } from "@/utils/api";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import toast, { Toaster } from "react-hot-toast";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getPostByIdQueryOptions, getPostsQueryOptions } from "@/utils/queryOptions";
 
 export default function AdminPage() {
   const router = useRouter();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState<PostFormData>({
     title: "",
     content: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [postToDelete, setPostToDelete] = useState<Post | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const data = await getAllPosts();
-        setPosts(data);
-      } catch (error) {
-        setError(error instanceof Error ? error.message : "Failed to fetch posts");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Fetch posts using React Query
+  const { data: posts = [], isLoading, error } = useQuery(getPostsQueryOptions);
 
-    fetchPosts();
-  }, []);
+  // Create post mutation
+  const createPostMutation = useMutation({
+    mutationFn: createPost,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getPostsQueryOptions.queryKey });
+      setFormData({ title: "", content: "" });
+      toast.success("Post created successfully!");
+    },
+    onError: () => {
+      toast.error("Failed to create post. Please try again.");
+    },
+  });
+
+  // Delete post mutation
+  const deletePostMutation = useMutation({
+    mutationFn: deletePost,
+    onSuccess: async () => {
+      const postIdToDelete = postToDelete?.id as string;
+      await queryClient.invalidateQueries({ queryKey: getPostByIdQueryOptions(postIdToDelete).queryKey });
+      await queryClient.invalidateQueries({ queryKey: getPostsQueryOptions.queryKey });
+      setPostToDelete(null);
+      toast.success("Post deleted successfully!");
+    },
+    onError: (error) => {
+      toast.error("Failed to delete post. Please try again.");
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
-
-    try {
-      const newPost = await createPost(formData);
-      setPosts((prevPosts) => [...prevPosts, newPost]);
-      setFormData({ title: "", content: "" });
-      toast.success("Post created successfully!");
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to create post");
-      toast.error("Failed to create post. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    createPostMutation.mutate(formData);
   };
 
   const handleDelete = (post: Post) => {
@@ -57,20 +58,9 @@ export default function AdminPage() {
   };
 
   const handleConfirmDelete = async () => {
-    if (postToDelete) {
-      setIsDeleting(true);
-      try {
-        await deletePost(postToDelete.id);
-        setPosts((prevPosts) => prevPosts.filter((p) => p.id !== postToDelete.id));
-        setPostToDelete(null);
-        toast.success("Post deleted successfully!");
-      } catch (error) {
-        setError(error instanceof Error ? error.message : "Failed to delete post");
-        toast.error("Failed to delete post. Please try again.");
-      } finally {
-        setIsDeleting(false);
-      }
-    }
+    if (!postToDelete) return;
+
+    deletePostMutation.mutate(postToDelete.id);
   };
 
   return (
@@ -108,14 +98,14 @@ export default function AdminPage() {
               required
             />
           </div>
-          {error && <p className="text-red-500 mb-4">{error}</p>}
+          {error && <p className="text-red-500 mb-4">{error instanceof Error ? error.message : "An error occurred"}</p>}
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={createPostMutation.isPending}
             className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 inline-flex items-center gap-2"
-            aria-busy={isSubmitting}
+            aria-busy={createPostMutation.isPending}
           >
-            {isSubmitting && <LoadingSpinner />}
+            {createPostMutation.isPending && <LoadingSpinner />}
             Create Post
           </button>
         </form>
@@ -168,7 +158,7 @@ export default function AdminPage() {
         message={`Are you sure you want to delete "${postToDelete?.title}"? This action cannot be undone.`}
         onConfirm={handleConfirmDelete}
         onCancel={() => setPostToDelete(null)}
-        isLoading={isDeleting}
+        isLoading={deletePostMutation.isPending}
       />
     </div>
   );
