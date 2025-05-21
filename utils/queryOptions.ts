@@ -3,11 +3,11 @@ import { queryOptions } from "@tanstack/react-query";
 
 export const getPostsQueryOptions = queryOptions({
     queryKey: ["posts"],
-    queryFn: () => getAllPosts(),
+    queryFn: ({ signal }) => getAllPosts({ signal }),
 });
 
 export const getPostByIdQueryOptions = (id: string) => queryOptions({
     queryKey: ["posts", id],
-    queryFn: ({ queryKey: [, id], signal }) => getPost(id, { signal }),
+    queryFn: ({ signal }) => getPost(id, { signal }),
     enabled: !!id,
 });
