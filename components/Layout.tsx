@@ -9,15 +9,14 @@ export default function Layout({ children }: LayoutProps) {
     const router = useRouter();
 
     const navItems = [
-        { href: '/effect-example', label: 'Effect Example' },
-        { href: '/query-example', label: 'Query Example' },
-        { href: '/mutation-example', label: 'Mutation Example' },
+        { href: '/dashboard', label: 'Dashboard' },
+        { href: '/admin', label: 'Admin' },
     ];
 
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Sidebar */}
-            <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
+            <div className="fixed inset-y-0 left-0 w-72 bg-white shadow-lg">
                 <div className="flex flex-col h-full">
                     <div className="p-6">
                         <h1 className="text-2xl font-bold text-gray-800">React Query Demo</h1>
@@ -41,8 +40,8 @@ export default function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Main Content */}
-            <div className="pl-64">
-                <main className="p-8">
+            <div className="pl-72">
+                <main className="px-10 py-12">
                     {children}
                 </main>
             </div>
