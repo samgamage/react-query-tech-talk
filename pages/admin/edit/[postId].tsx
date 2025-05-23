@@ -8,7 +8,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function EditPost() {
   const router = useRouter();
-  const { postId } = router.query;
+  const postId = router.query.postId as string;
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,8 +16,6 @@ export default function EditPost() {
 
   useEffect(() => {
     const fetchPost = async () => {
-      if (!postId || typeof postId !== 'string') return;
-      
       setIsLoading(true);
       try {
         const post = await getPost(postId);
@@ -34,7 +32,7 @@ export default function EditPost() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData || !postId || typeof postId !== 'string') return;
+    if (!formData) return;
 
     setIsSubmitting(true);
     setError(null);

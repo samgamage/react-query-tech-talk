@@ -7,15 +7,13 @@ import { useRouter } from "next/router";
 
 const PostPage: FunctionComponent = () => {
   const router = useRouter();
-  const { postId } = router.query;
+  const postId = router.query.postId as string;
   const [post, setPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     const fetchPost = async () => {
-      if (!postId || typeof postId !== 'string') return;
-      
       setIsLoading(true);
       try {
         const data = await getPost(postId);

@@ -38,6 +38,20 @@ function updatePost(id: string, updates: Partial<Omit<Post, 'id'>>): Post | unde
   return updatedPost;
 }
 
+function deletePost(id: string): Post | undefined {
+  const posts = getPosts();
+  const postIndex = posts.findIndex(post => post.id === id);
+  
+  if (postIndex === -1) {
+    return undefined;
+  }
+  
+  const deletedPost = posts[postIndex];
+  posts.splice(postIndex, 1);
+  fs.writeFileSync(dataFilePath, JSON.stringify(posts, null, 2));
+  return deletedPost;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<Post | { error: string }>
@@ -48,21 +62,20 @@ export default async function handler(
     return res.status(400).json({ error: 'Invalid post ID' });
   }
 
+  // Set common headers
+  res.setHeader('Content-Type', 'application/json');
+
   // Simulate network delay
   await randomDelay();
 
   try {
-    const postsData = fs.readFileSync(dataFilePath, 'utf-8');
-    const posts: Post[] = JSON.parse(postsData);
-    const postIndex = posts.findIndex((post) => post.id === id);
-
-    if (postIndex === -1) {
-      return res.status(404).json({ error: 'Post not found' });
-    }
-
     switch (req.method) {
       case 'GET':
-        return res.status(200).json(posts[postIndex]);
+        const post = getPostById(id);
+        if (!post) {
+          return res.status(404).json({ error: 'Post not found' });
+        }
+        return res.status(200).json(post);
 
       case 'PUT':
         const { title, content } = req.body;
@@ -71,18 +84,17 @@ export default async function handler(
           return res.status(400).json({ error: 'Title and content are required' });
         }
 
-        posts[postIndex] = {
-          ...posts[postIndex],
-          title,
-          content,
-        };
-
-        fs.writeFileSync(dataFilePath, JSON.stringify(posts, null, 2));
-        return res.status(200).json(posts[postIndex]);
+        const updatedPost = updatePost(id, { title, content });
+        if (!updatedPost) {
+          return res.status(404).json({ error: 'Post not found' });
+        }
+        return res.status(200).json(updatedPost);
 
       case 'DELETE':
-        posts.splice(postIndex, 1);
-        fs.writeFileSync(dataFilePath, JSON.stringify(posts, null, 2));
+        const deletedPost = deletePost(id);
+        if (!deletedPost) {
+          return res.status(404).json({ error: 'Post not found' });
+        }
         return res.status(204).end();
 
       default:
@@ -93,4 +105,4 @@ export default async function handler(
     console.error('Error handling post:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
-} 
+}

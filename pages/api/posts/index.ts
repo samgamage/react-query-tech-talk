@@ -32,6 +32,9 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<Post | Post[] | { error: string }>
 ) {
+  // Set common headers
+  res.setHeader('Content-Type', 'application/json');
+
   switch (req.method) {
     case 'GET':
       await randomDelay();
