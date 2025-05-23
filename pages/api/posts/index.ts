@@ -34,7 +34,7 @@ export default async function handler(
 ) {
   // Set common headers
   res.setHeader('Content-Type', 'application/json');
-
+  
   switch (req.method) {
     case 'GET':
       await randomDelay();

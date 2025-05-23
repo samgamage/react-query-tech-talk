@@ -1,32 +1,18 @@
-import { getPost } from "@/utils/api";
-import { FunctionComponent, useEffect, useState } from "react";
-import { Post } from "@/utils/types";
+import { FunctionComponent } from "react";
 import PostSkeleton from "@/components/PostSkeleton";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useQuery } from "@tanstack/react-query";
+import { getPostByIdQueryOptions } from "@/utils/queryOptions";
 
 const PostPage: FunctionComponent = () => {
   const router = useRouter();
   const postId = router.query.postId as string;
-  const [post, setPost] = useState<Post | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    const fetchPost = async () => {
-      setIsLoading(true);
-      try {
-        const data = await getPost(postId);
-        setPost(data);
-      } catch (error) {
-        setError(error as Error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPost();
-  }, [postId]);
+  const { data: post, isLoading, error } = useQuery({
+    ...getPostByIdQueryOptions(postId),
+    enabled: !!postId,
+  });
 
   if (isLoading) {
     return <PostSkeleton />;

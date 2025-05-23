@@ -1,55 +1,61 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { Post } from "@/utils/types";
-import { getPost, updatePost } from "@/utils/api";
+import { Post, PostFormData } from "@/utils/types";
+import { updatePost } from "@/utils/api";
 import PostSkeleton from "@/components/PostSkeleton";
 import toast, { Toaster } from "react-hot-toast";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getPostByIdQueryOptions, getPostsQueryOptions } from "@/utils/queryOptions";
+
+type UpdatePostMutationPayload = { id: string; data: PostFormData };
 
 export default function EditPost() {
   const router = useRouter();
   const postId = router.query.postId as string;
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Post | null>(null);
 
-  useEffect(() => {
-    const fetchPost = async () => {
-      setIsLoading(true);
-      try {
-        const post = await getPost(postId);
-        setFormData(post);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch post");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Fetch post data
+  const { data: post, isLoading, error } = useQuery({
+    ...getPostByIdQueryOptions(postId as string),
+    enabled: !!postId
+  });
 
-    fetchPost();
-  }, [postId]);
+  // Update form data when post is loaded
+  useEffect(() => {
+    if (post) {
+      setFormData(post);
+    }
+  }, [post]);
+
+  // Update post mutation
+  const updatePostMutation = useMutation({
+    mutationFn: ({ id, data }: UpdatePostMutationPayload) => 
+      updatePost(id, data),
+    onSuccess: async () => {
+      // Invalidate both the individual post and the posts list
+      await queryClient.invalidateQueries({ queryKey: getPostByIdQueryOptions(postId).queryKey });
+      await queryClient.invalidateQueries({ queryKey: getPostsQueryOptions.queryKey });
+      toast.success("Post updated successfully!");
+      router.push('/admin');
+    },
+    onError: () => {
+      toast.error("Failed to update post. Please try again.");
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData) return;
 
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      await updatePost(postId, {
+    updatePostMutation.mutate({
+      id: postId,
+      data: {
         title: formData.title,
         content: formData.content,
-      });
-      toast.success("Post updated successfully!");
-      router.push('/admin');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update post");
-      toast.error("Failed to update post. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+      },
+    });
   };
 
   if (isLoading) {
@@ -59,7 +65,7 @@ export default function EditPost() {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto p-6">
-        <div className="text-red-500 mb-4">{error}</div>
+        <div className="text-red-500 mb-4">{error.message}</div>
         <button
           onClick={() => router.push('/admin')}
           className="text-blue-500 hover:text-blue-700"
@@ -124,17 +130,14 @@ export default function EditPost() {
               required
             />
           </div>
-          {error && (
-            <div className="text-red-500 text-sm">{error}</div>
-          )}
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={updatePostMutation.isPending}
               className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 inline-flex items-center gap-2"
-              aria-busy={isSubmitting}
+              aria-busy={updatePostMutation.isPending}
             >
-              {isSubmitting && <LoadingSpinner size="sm" />}
+              {updatePostMutation.isPending && <LoadingSpinner size="sm" />}
               Save Changes
             </button>
             <button
