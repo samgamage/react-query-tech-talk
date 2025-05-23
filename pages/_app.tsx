@@ -3,7 +3,7 @@ import type { AppProps } from "next/app";
 import Layout from "@/components/Layout";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// Create a client
+// NOTE: Query client must be outside of the App component to avoid re-creating the client on every render
 const queryClient = new QueryClient();
 
 export default function App({ Component, pageProps }: AppProps) {

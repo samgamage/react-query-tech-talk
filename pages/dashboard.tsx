@@ -4,9 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { getPostsQueryOptions } from "@/utils/queryOptions";
 
 export default function Dashboard() {
-    const { data, isPending, error } = useQuery(getPostsQueryOptions);
+    const { data, isLoading, error } = useQuery(getPostsQueryOptions);
 
-    if (isPending) {
+    if (isLoading) {
         return <PostsListSkeleton />;
     }
 
